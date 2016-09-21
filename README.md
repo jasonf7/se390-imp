@@ -1,1 +1,1 @@
-# se390-imp
+# SE390 Internal Mini-Project
