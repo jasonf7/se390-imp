@@ -1,202 +1,95 @@
-/* global Phaser RemotePlayer io */
+var InfiniteScroller = InfiniteScroller || {};
 
-var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render })
+InfiniteScroller.Game = function(){};
 
-function preload () {
-  game.load.image('earth', 'assets/light_sand.png')
-  game.load.spritesheet('dude', 'assets/dude.png', 64, 64)
-  game.load.spritesheet('enemy', 'assets/dude.png', 64, 64)
-}
+InfiniteScroller.Game.prototype = {
+  preload: function() {
+    this.game.time.advancedTiming = true;
+  },
+  create: function() {
 
-var socket // Socket connection
+    // scaling options
+    this.game.world.setBounds(0, 0, 3500, this.game.height);
+    this.grass = this.add.tileSprite(0,this.game.height-100,this.game.world.width,70,'grass');
+    this.ground = this.add.tileSprite(0,this.game.height-70,this.game.world.width,70,'ground');
 
-var land
+    //  A simple background for our game
+    this.game.add.sprite(0, 0, 'sky');
 
-var player
+    //  The platforms group contains the ground and the 2 ledges we can jump on
+    platforms = this.game.add.group();
 
-var enemies
+    //  We will enable physics for any object that is created in this group
+    platforms.enableBody = true;
 
-var currentSpeed = 0
-var cursors
+    // Here we create the ground.
+    var ground = platforms.create(0, this.game.world.height - 64, 'ground');
 
-function create () {
-  socket = io.connect()
+    //  Scale it to fit the width of the game (the original sprite is 400x32 in size)
+    ground.scale.setTo(2, 2);
 
-  // Resize our game world to be a 2000 x 2000 square
-  game.world.setBounds(-500, -500, 1000, 1000)
+    //  This stops it from falling away when you jump on it
+    ground.body.immovable = true;
 
-  // Our tiled scrolling background
-  land = game.add.tileSprite(0, 0, 800, 600, 'earth')
-  land.fixedToCamera = true
+    //  Now let's create two ledges
+    var ledge = platforms.create(400, 400, 'ground');
 
-  // The base of our player
-  var startX = Math.round(Math.random() * (1000) - 500)
-  var startY = Math.round(Math.random() * (1000) - 500)
-  player = game.add.sprite(startX, startY, 'dude')
-  player.anchor.setTo(0.5, 0.5)
-  player.animations.add('move', [0, 1, 2, 3, 4, 5, 6, 7], 20, true)
-  player.animations.add('stop', [3], 20, true)
+    ledge.body.immovable = true;
 
-  // This will force it to decelerate and limit its speed
-  // player.body.drag.setTo(200, 200)
-  game.physics.enable(player, Phaser.Physics.ARCADE);
-  player.body.maxVelocity.setTo(400, 400)
-  player.body.collideWorldBounds = true
+    ledge = platforms.create(-150, 250, 'ground');
 
-  // Create some baddies to waste :)
-  enemies = []
+    ledge.body.immovable = true;
 
-  player.bringToTop()
+    // The player and its settings
+    player = this.game.add.sprite(32, this.game.world.height - 150, 'sprite');
 
-  game.camera.follow(player)
-  game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300)
-  game.camera.focusOnXY(0, 0)
+    //  We need to enable physics on the player
+    this.game.physics.arcade.enable(player);
 
-  cursors = game.input.keyboard.createCursorKeys()
+    //  Player physics properties. Give the little guy a slight bounce.
+    player.body.bounce.y = 0.2;
+    player.body.gravity.y = 300;
+    player.body.collideWorldBounds = true;
 
-  // Start listening for events
-  setEventHandlers()
-}
+    //  Our two animations, walking left and right.
+    player.animations.add('left', [0, 1, 2, 3], 10, true);
+    player.animations.add('right', [5, 6, 7, 8], 10, true);
+  },
 
-var setEventHandlers = function () {
-  // Socket connection successful
-  socket.on('connect', onSocketConnected)
+  update: function() {
+    var cursors = this.game.input.keyboard.createCursorKeys();
+    //  Collide the player and the stars with the platforms
+    var hitPlatform = this.game.physics.arcade.collide(player, platforms);
 
-  // Socket disconnection
-  socket.on('disconnect', onSocketDisconnect)
+    //  Reset the players velocity (movement)
+    player.body.velocity.x = 0;
 
-  // New player message received
-  socket.on('new player', onNewPlayer)
+   if (cursors.left.isDown)
+    {
+      //  Move to the left
+      player.body.velocity.x = -150;
 
-  // Player move message received
-  socket.on('move player', onMovePlayer)
-
-  // Player removed message received
-  socket.on('remove player', onRemovePlayer)
-}
-
-// Socket connected
-function onSocketConnected () {
-  console.log('Connected to socket server')
-
-  // Reset enemies on reconnect
-  enemies.forEach(function (enemy) {
-    enemy.player.kill()
-  })
-  enemies = []
-
-  // Send local player data to the game server
-  socket.emit('new player', { x: player.x, y: player.y, angle: player.angle })
-}
-
-// Socket disconnected
-function onSocketDisconnect () {
-  console.log('Disconnected from socket server')
-}
-
-// New player
-function onNewPlayer (data) {
-  console.log('New player connected:', data.id)
-
-  // Avoid possible duplicate players
-  var duplicate = playerById(data.id)
-  if (duplicate) {
-    console.log('Duplicate player!')
-    return
-  }
-
-  // Add new player to the remote players array
-  enemies.push(new RemotePlayer(data.id, game, player, data.x, data.y, data.angle))
-}
-
-// Move player
-function onMovePlayer (data) {
-  var movePlayer = playerById(data.id)
-
-  // Player not found
-  if (!movePlayer) {
-    console.log('Player not found: ', data.id)
-    return
-  }
-
-  // Update player position
-  movePlayer.player.x = data.x
-  movePlayer.player.y = data.y
-  movePlayer.player.angle = data.angle
-}
-
-// Remove player
-function onRemovePlayer (data) {
-  var removePlayer = playerById(data.id)
-
-  // Player not found
-  if (!removePlayer) {
-    console.log('Player not found: ', data.id)
-    return
-  }
-
-  removePlayer.player.kill()
-
-  // Remove player from array
-  enemies.splice(enemies.indexOf(removePlayer), 1)
-}
-
-function update () {
-  for (var i = 0; i < enemies.length; i++) {
-    if (enemies[i].alive) {
-      enemies[i].update()
-      game.physics.arcade.collide(player, enemies[i].player)
+      player.animations.play('left');
     }
-  }
+    else if (cursors.right.isDown)
+    {
+      //  Move to the right
+      player.body.velocity.x = 150;
 
-  if (cursors.left.isDown) {
-    player.angle -= 4
-  } else if (cursors.right.isDown) {
-    player.angle += 4
-  }
-
-  if (cursors.up.isDown) {
-    // The speed we'll travel at
-    currentSpeed = 300
-  } else {
-    if (currentSpeed > 0) {
-      currentSpeed -= 4
+      player.animations.play('right');
     }
-  }
 
-  game.physics.arcade.velocityFromRotation(player.rotation, currentSpeed, player.body.velocity)
-
-  if (currentSpeed > 0) {
-    player.animations.play('move')
-  } else {
-    player.animations.play('stop')
-  }
-
-  land.tilePosition.x = -game.camera.x
-  land.tilePosition.y = -game.camera.y
-
-  if (game.input.activePointer.isDown) {
-    if (game.physics.arcade.distanceToPointer(player) >= 10) {
-      currentSpeed = 300
-
-      player.rotation = game.physics.arcade.angleToPointer(player)
+      player.frame = 4;
+    //  Allow the player to jump if they are touching the ground.
+    if (cursors.up.isDown && player.body.touching.down && hitPlatform)
+    {
+      player.body.velocity.y = -350;
     }
+
+    this.game.camera.follow(player);
+
+  //  player.body.velocity.x = 300;
+
+    this.game.world.wrap(player, -(this.game.width/2), false, true, false);
   }
-
-  socket.emit('move player', { x: player.x, y: player.y, angle: player.angle })
-}
-
-function render () {
-
-}
-
-// Find player by ID
-function playerById (id) {
-  for (var i = 0; i < enemies.length; i++) {
-    if (enemies[i].player.name === id) {
-      return enemies[i]
-    }
-  }
-
-  return false
-}
+};
