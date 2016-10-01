@@ -41,10 +41,12 @@ InfiniteScroller.Game.prototype = {
     ledge.body.immovable = true;
 
     // The player and its settings
-    player = this.game.add.sprite(32, this.game.world.height - 150, 'sprite');
+    player = this.game.add.sprite(200, this.game.world.height - 150, 'sprite');
+    invisiblePlayer = this.game.add.sprite(32, this.game.world.height-150, 'sprite');
 
     //  We need to enable physics on the player
     this.game.physics.arcade.enable(player);
+    this.game.physics.arcade.enable(invisiblePlayer);
 
     //  Player physics properties. Give the little guy a slight bounce.
     player.body.bounce.y = 0.2;
@@ -89,7 +91,10 @@ InfiniteScroller.Game.prototype = {
     this.game.camera.follow(player);
 
   //  player.body.velocity.x = 300;
+    invisiblePlayer.body.velocity.x = 50;
+    this.game.camera.follow(invisiblePlayer);
+    invisiblePlayer.alpha = 0;
 
-    this.game.world.wrap(player, -(this.game.width/2), false, true, false);
+    this.game.world.wrap(invisiblePlayer, -(this.game.width/2), false, true, false);
   }
 };
