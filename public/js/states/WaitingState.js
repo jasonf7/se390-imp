@@ -1,6 +1,12 @@
-var InfiniteScroller = InfiniteScroller || {};
+var Platformer = Platformer || {};
 
-InfiniteScroller.Boot = function(){};
+Platformer.WaitingState = function () {
+    "use strict";
+    Phaser.State.call(this);
+};
+
+// Platformer.prototype = Object.create(Phaser.State.prototype);
+// Platformer.prototype.constructor = Platformer.WaitingState;
 
 var clientId = "";
 var waitingState = {};
@@ -9,10 +15,9 @@ var playerText
 
 // REACT Waiting page should go here
 //setting game configuration and loading the assets for the loading screen
-InfiniteScroller.Boot.prototype = {
+Platformer.WaitingState.prototype = {
   preload: function() {
     //assets we'll use in the loading screen
-    this.game.load.image('sky', 'assets/sky.png', 71, 71);
     this.game.load.bitmapFont('minecraft', 'assets/fonts/minecraft.png', 'assets/fonts/minecraft.fnt');
   },
   create: function() {
@@ -64,7 +69,7 @@ InfiniteScroller.Boot.prototype = {
   },
   update: function() {
     if (waitingState.godId != undefined && waitingState.playerId != undefined) {
-      this.state.start('Preload');
+      this.state.start("BootState", true, false, "assets/levels/level1.json");
       return;
     }
 

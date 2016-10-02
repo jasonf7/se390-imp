@@ -5,14 +5,7 @@ Platformer.TiledState = function () {
     Phaser.State.call(this);
 
     this.prefab_classes = {
-        "player": Platformer.Player.prototype.constructor,
-        "ground_enemy": Platformer.GroundEnemy.prototype.constructor,
-        "flying_enemy": Platformer.FlyingEnemy.prototype.constructor,
-        "running_enemy": Platformer.RunningEnemy.prototype.constructor,
-        "goal": Platformer.Goal.prototype.constructor,
-        "checkpoint": Platformer.Checkpoint.prototype.constructor,
-        "coin": Platformer.Coin.prototype.constructor,
-        "score": Platformer.Score.prototype.constructor
+        "player": Platformer.Player.prototype.constructor
     };
 };
 

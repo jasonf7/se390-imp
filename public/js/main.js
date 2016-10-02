@@ -1,9 +1,8 @@
-var InfiniteScroller = InfiniteScroller || {};
+var Platformer = Platformer || {};
 
-InfiniteScroller.game = new Phaser.Game(746, 420, Phaser.CANVAS, '');
-
-InfiniteScroller.game.state.add('Boot', InfiniteScroller.Boot);
-InfiniteScroller.game.state.add('Preload', InfiniteScroller.Preload);
-InfiniteScroller.game.state.add('Game', InfiniteScroller.Game);
-
-InfiniteScroller.game.state.start('Boot');
+var game = new Phaser.Game("100%", "100%", Phaser.CANVAS);
+game.state.add("WaitingState", new Platformer.WaitingState());
+game.state.add("BootState", new Platformer.BootState());
+game.state.add("LoadingState", new Platformer.LoadingState());
+game.state.add("GameState", new Platformer.TiledState());
+game.state.start('WaitingState');
